@@ -25,7 +25,7 @@ impl<T> PartialEq for &Node<T> {
 }
 
 #[derive(Debug,Clone)]
-pub struct NodeIter<'a, T>(Option<&'a Node<T>>,Option<&'a Node<T>>);
+pub struct NodeIter<'a, T>(Option<&'a Node<T>>);
 
 impl<'a, T> PartialEq for NodeIter<'a, T> {
     fn eq(&self, other: &Self) -> bool {
@@ -37,6 +37,34 @@ impl<'a, T> PartialEq for NodeIter<'a, T> {
 }
 
 impl<'a, T> Iterator for NodeIter<'a, T> {
+    type Item = &'a T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if let Some(node) = self.0 {
+            self.0 = match &node.next {
+                Some(rf) => Some(rf.deref()),
+                None => None
+            };
+            Some(&node.item)
+        } else {
+            None
+        }
+    }
+}
+
+#[derive(Debug,Clone)]
+pub struct NodeIterFinite<'a, T>(Option<&'a Node<T>>,Option<&'a Node<T>>);
+
+impl<'a, T> PartialEq for NodeIterFinite<'a, T> {
+    fn eq(&self, other: &Self) -> bool {
+        match (self.0, other.0) {
+            (Some(node1), Some(node2)) => node1 == node2,
+            _ => false
+        }
+    }
+}
+
+impl<'a, T> Iterator for NodeIterFinite<'a, T> {
     type Item = &'a T;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -117,20 +145,20 @@ impl<T> MultiList<T> {
         NodeIter(match &self.head {
             Some(node) => Some(&node),
             None => None
-        }, None)
+        })
     }
 
     #[inline]
-    pub fn iter_to<'a>(&'a self, node: NodeIter<'a, T>) -> NodeIter<'a, T> {
-        NodeIter(match &self.head {
+    pub fn iter_to<'a>(&'a self, node: NodeIter<'a, T>) -> NodeIterFinite<'a, T> {
+        NodeIterFinite(match &self.head {
             Some(node) => Some(&node),
             None => None
         }, node.0)
     }
 
     #[inline]
-    pub fn from_to<'a>(first: NodeIter<'a, T>, last: NodeIter<'a, T>) -> NodeIter<'a, T> {
-        NodeIter(first.0, last.0)
+    pub fn from_to<'a>(first: NodeIter<'a, T>, last: NodeIter<'a, T>) -> NodeIterFinite<'a, T> {
+        NodeIterFinite(first.0, last.0)
     }
 
     #[inline]
@@ -178,14 +206,14 @@ impl<T> MultiList<T> {
                 let mut rf1 = &other.head;
                 while let Some(node1) = rf1 {
                     if Rc::ptr_eq( node0, node1 ) {
-                        return NodeIter(Some(node0.deref()), None);
+                        return NodeIter(Some(node0.deref()));
                     }
                     rf1 = &node1.next;
                 }
             }
             rf0 = &node0.next;
         }
-        NodeIter(None, None)
+        NodeIter(None)
     }
 }
 
@@ -195,13 +223,12 @@ impl<T: PartialEq> MultiList<T> {
         while let Some(node) = rf {
             if node.item.eq(item) {
                 return NodeIter(
-                    Some(node.deref()),
-                    None
+                    Some(node.deref())
                 );
             } else {
                 rf = &node.next;
             }
         }
-        NodeIter(None, None)
+        NodeIter(None)
     }
 }
