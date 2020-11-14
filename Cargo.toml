@@ -3,4 +3,5 @@ members = [
     "tcp_server",
     "tcp_client",
     "multi_list",
+    "sdl_events",
 ]
