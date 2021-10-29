@@ -6,4 +6,5 @@ members = [
     "sdl_events",
     "bin_tree",
 	"primes",
+	"generator",
 ]
