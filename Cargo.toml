@@ -7,4 +7,5 @@ members = [
     "bin_tree",
 	"primes",
 	"generator",
+	"scan",
 ]
