@@ -9,4 +9,5 @@ members = [
 	"generator",
 	"scan",
 	"lambda",
+	"regex",
 ]

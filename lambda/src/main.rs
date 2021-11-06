@@ -81,16 +81,16 @@ fn div<A: std::ops::Div>() -> Lambda<(A, A), A::Output> {
 	Lambda{ func: box move |a, b| a / b }
 }
 
-fn map<F, I, T>() -> Lambda<(F, I), std::iter::Map<I, F>>
-where I: Iterator, F: Fn(I::Item) -> T {
-	Lambda{ func: box move |f, i| i.map(f) }
+fn map<F, I, T>() -> Lambda<(F, I), std::iter::Map<I::IntoIter, F>>
+where I: IntoIterator, F: Fn(I::Item) -> T {
+	Lambda{ func: box move |f, i| i.into_iter().map(f) }
 }
 
 fn main() {
 	println!("{:?}",
 		map()
 		(|x| x * x)
-		(vec![1, 2, 3, 4, 5].into_iter())
+		(vec![1, 2, 3, 4, 5])
 		().collect::<Vec<i32>>()
 	);
     println!("{}", ( add() (3) * add() (4) ) (5) ());
