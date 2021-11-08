@@ -23,15 +23,22 @@ impl Into<Match> for char {
     }
 }
 
-impl<const N: usize> Into<Match> for [Match; N] {
-    fn into(self) -> Match {
-        Match::Or(self.into_iter().collect())
-    }
-}
-
 impl Into<Match> for (char, char) {
     fn into(self) -> Match {
         Match::Range(self.0, self.1)
+    }
+}
+
+impl FromIterator<Match> for Match {
+    fn from_iter<T: IntoIterator<Item=Match>>(iter: T) -> Self {
+        let or = iter.into_iter().flat_map(|m| {
+            if let Match::Or(v) = m {
+                v
+            } else {
+                VecDeque::from([m])
+            }
+        }).collect();
+        Match::Or(or)
     }
 }
 
@@ -103,11 +110,11 @@ impl Regex {
                         'd' => to_push[0].push_back(DIGIT),
                         'w' => to_push[0].push_back([
                                 UPPER, LOWER, DIGIT, '_'.into(),
-                            ].into()),
+                            ].into_iter().collect()),
                         's' => to_push[0].push_back([
                                 ' '.into(), '\t'.into(), '\x0B'.into(),
                                 '\r'.into(), '\n'.into(), '\x0C'.into(),
-                            ].into()),
+                            ].into_iter().collect()),
                         'c' => {
                             match pat.next()? {
                                 c @ 'A'..='Z' => {
@@ -166,21 +173,21 @@ impl Regex {
                                     "alpha" =>
                                         to_push[0].push_back([
                                             UPPER, LOWER,
-                                        ].into()),
+                                        ].into_iter().collect()),
                                     "digit" => to_push[0].push_back(DIGIT),
                                     "xdigit" =>
                                         to_push[1].push_back([
                                             DIGIT, ('A', 'F').into(), ('a', 'f').into(),
-                                        ].into()),
+                                        ].into_iter().collect()),
                                     "alnum" =>
                                         to_push[0].push_back([
                                             UPPER, LOWER, DIGIT,
-                                        ].into()),
+                                        ].into_iter().collect()),
                                     "ascii" => to_push[0].push_back(('\x00', '\x7F').into()),
                                     "word" =>
                                         to_push[0].push_back([
                                             UPPER, LOWER, DIGIT, '_'.into(),
-                                        ].into()),
+                                        ].into_iter().collect()),
                                     "punct" => {
                                         let or = Match::Or(
                                             "-!\"#$%&'()*+,./:;<=>?@[\\]_`{|}~".chars()
@@ -192,16 +199,16 @@ impl Regex {
                                     "blank" =>
                                         to_push[0].push_back([
                                             ' '.into(), '\t'.into(),
-                                        ].into()),
+                                        ].into_iter().collect()),
                                     "space" =>
                                         to_push[0].push_back([
                                             ' '.into(), '\t'.into(), '\x0B'.into(),
                                             '\r'.into(), '\n'.into(), '\x0C'.into(),
-                                        ].into()),
+                                        ].into_iter().collect()),
                                     "cntrl" =>
                                         to_push[0].push_back([
                                             CNTRL.0, CNTRL.1,
-                                        ].into()),
+                                        ].into_iter().collect()),
                                     "graph" => to_push[0].push_back(GRAPH),
                                     "print" => to_push[0].push_back(PRINT),
                                     _ => return None,
@@ -242,12 +249,7 @@ impl Regex {
                 ']' => {
                     if let Some('[') = brackets.pop_front() {
                         let group = to_push
-                            .pop_front()?
-                            .into_iter()
-                            .flat_map(|m| match m {
-                                Match::Or(v) => v,
-                                m => VecDeque::from([m]),
-                            }).collect::<VecDeque<_>>();
+                            .pop_front()?;
                         if let Some('^') = brackets.front() {
                             group.iter().try_for_each(
                                 |m| match m {
@@ -257,7 +259,7 @@ impl Regex {
                             )?;
                             to_push[0].push_back(Match::NotOr(group));
                         } else {
-                            to_push[0].push_back(Match::Or(group));
+                            to_push[0].push_back(group.into_iter().collect());
                         }
                     } else {
                         return None;
@@ -401,6 +403,7 @@ impl Regex {
 
 fn main() {
 	let regex = Regex::new(r"[^[:digit:]]*\.[^[:digit:]]+").unwrap();
+    println!("{}", regex);
 
 	let sources = vec![
 		"Denis_Dr0zhzhin.gif",
@@ -413,6 +416,6 @@ fn main() {
 		"0_0",
 	];
 	for source in sources {
-		println!(" {:?} -> {}", source, regex.is_match(source));
+		println!("{:?} -> {}", source, regex.is_match(source));
 	}
 }
