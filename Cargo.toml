@@ -10,4 +10,5 @@ members = [
 	"scan",
 	"lambda",
 	"regex",
+    "future",
 ]
