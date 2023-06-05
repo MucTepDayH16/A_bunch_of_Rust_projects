@@ -1,8 +1,7 @@
-use std::io::Write;
 use std::{
     env::args,
-    net::TcpListener,
-    thread,
+    io::Read,
+    net::{Ipv4Addr, TcpListener},
 };
 
 fn get_port(options: &Vec<String>) -> Result<u16, String> {
@@ -24,8 +23,7 @@ fn get_port(options: &Vec<String>) -> Result<u16, String> {
 static NOT_A_NUMBER: &str = "Port must be a number > 0 and < 65 536";
 static NO_PORT_ERROR: &str = "Specify connection's port";
 
-struct IPv4(u8, u8, u8, u8);
-static LOCALHOST: IPv4 = IPv4(0x00, 0x00, 0x00, 0x00);
+const LOCALHOST: Ipv4Addr = Ipv4Addr::new(0x00, 0x00, 0x00, 0x00);
 
 fn main() {
     let mut options = Vec::new();
@@ -43,40 +41,30 @@ fn main() {
         }
     };
 
-    let ip = format!(
-        "{}.{}.{}.{}:{}",
-        LOCALHOST.0, LOCALHOST.1, LOCALHOST.2, LOCALHOST.3, port
-    );
-
-    println!("Opening {} socket...", ip);
-
-    let ip = &ip;
-    match TcpListener::bind(ip) {
+    println!("Opening {} socket...", LOCALHOST);
+    match TcpListener::bind((LOCALHOST, port)) {
         Ok(lsnr) => {
-            println!("Starting listening for port {}", ip);
+            println!("Starting listening for port {}", LOCALHOST);
 
-            let th = thread::spawn(move || {
-                for strm_res in lsnr.incoming() {
-                    match strm_res {
-                        Ok(mut strm) => {
-                            println!(
-                                "Incoming connection established, peer address: {}",
-                                strm.peer_addr().unwrap()
-                            );
-                            let mut buff = Vec::<u8>::with_capacity(256);
-                            for l in b"Hello, world!" {
-                                buff.push(*l);
-                            }
-                            strm.write(&buff[..]).unwrap();
-                        }
-                        Err(err) => {
-                            println!("Incoming connection lost with error: {}", err);
+            for strm in lsnr.incoming() {
+                match strm {
+                    Ok(mut strm) => {
+                        let ip = strm.peer_addr();
+                        let mut buf = String::new();
+                        if let Err(e) = strm.read_to_string(&mut buf) {
+                            println!("{e:?}");
+                        } else {
+                            println!("\t{ip:?}: {buf}");
                         }
                     }
+                    Err(err) => {
+                        println!(
+                            "Incoming connection lost with error: {}",
+                            err
+                        );
+                    }
                 }
-            });
-
-            th.join().unwrap();
+            }
             return;
         }
         Err(err) => {
