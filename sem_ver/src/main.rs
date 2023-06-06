@@ -1,9 +1,11 @@
-use num_integer::Integer;
-use regex::Regex;
 use std::{cmp::*, fmt, str::FromStr};
 
+use num_integer::Integer;
+use regex::Regex;
+
 #[derive(Clone, Debug)]
-struct SemVer<Major: Integer = u16, Minor: Integer = u16, Patch: Integer = u32> {
+struct SemVer<Major: Integer = u16, Minor: Integer = u16, Patch: Integer = u32>
+{
     major: Major,
     minor: Minor,
     patch: Patch,
@@ -55,7 +57,10 @@ where
     Patch: Integer,
 {
     fn cmp(&self, other: &Self) -> Ordering {
-        fn cmp_meta(first: &Option<Box<str>>, second: &Option<Box<str>>) -> Ordering {
+        fn cmp_meta(
+            first: &Option<Box<str>>,
+            second: &Option<Box<str>>,
+        ) -> Ordering {
             match (first.as_ref(), second.as_ref()) {
                 (None, None) => Ordering::Equal,
                 (None, Some(_)) => Ordering::Greater,
@@ -121,8 +126,12 @@ where
                     major: Major::from_str_radix(major, 10).unwrap_unchecked(),
                     minor: Minor::from_str_radix(minor, 10).unwrap_unchecked(),
                     patch: Patch::from_str_radix(patch, 10).unwrap_unchecked(),
-                    prerelease: capture.name("prerelease").map(|m| Box::from(m.as_str())),
-                    buildmetadata: capture.name("buildmetadata").map(|m| Box::from(m.as_str())),
+                    prerelease: capture
+                        .name("prerelease")
+                        .map(|m| Box::from(m.as_str())),
+                    buildmetadata: capture
+                        .name("buildmetadata")
+                        .map(|m| Box::from(m.as_str())),
                 })
             },
             (Some(_), Some(_)) => Err(SemVerParseError::NotSingleSemVer),

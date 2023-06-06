@@ -1,7 +1,4 @@
-use std::{
-    collections::VecDeque,
-    fmt,
-};
+use std::{collections::VecDeque, fmt};
 
 #[derive(Clone, Debug)]
 enum Match {
@@ -30,14 +27,17 @@ impl Into<Match> for (char, char) {
 }
 
 impl FromIterator<Match> for Match {
-    fn from_iter<T: IntoIterator<Item=Match>>(iter: T) -> Self {
-        let or = iter.into_iter().flat_map(|m| {
-            if let Match::Or(v) = m {
-                v
-            } else {
-                VecDeque::from([m])
-            }
-        }).collect();
+    fn from_iter<T: IntoIterator<Item = Match>>(iter: T) -> Self {
+        let or = iter
+            .into_iter()
+            .flat_map(|m| {
+                if let Match::Or(v) = m {
+                    v
+                } else {
+                    VecDeque::from([m])
+                }
+            })
+            .collect();
         Match::Or(or)
     }
 }
@@ -88,47 +88,50 @@ impl Regex {
         const UPPER: Match = Match::Range('A', 'Z');
         const LOWER: Match = Match::Range('a', 'z');
         const DIGIT: Match = Match::Range('0', '9');
-        const CNTRL: (Match, Match) = (
-            Match::Range('\x00', '\x1F'),
-            Match::Char('\x7F'),
-        );
+        const CNTRL: (Match, Match) =
+            (Match::Range('\x00', '\x1F'), Match::Char('\x7F'));
         const GRAPH: Match = Match::Range('\x21', '\x7E');
         const PRINT: Match = Match::Range('\x20', '\x7E');
 
         while let Some(c) = pat.next() {
             match c {
-                '\\' => {
-                    match pat.next()? {
-                        c @ ('\\' | '-' | '|' | '(' | '[' | ')' | ']' | '*' | '+' | '?' | '.' | ':') =>
-                            to_push[0].push_back(c.into()),
-                        c @ ('a' | 'b' | 't' | 'n' | 'v' | 'f' | 'r' | 'e') => {
-                            let esc = UNESCAPES.iter()
+                '\\' => match pat.next()? {
+                    c @ ('\\' | '-' | '|' | '(' | '[' | ')' | ']' | '*'
+                    | '+' | '?' | '.' | ':') => to_push[0].push_back(c.into()),
+                    c @ ('a' | 'b' | 't' | 'n' | 'v' | 'f' | 'r' | 'e') => {
+                        let esc =
+                            UNESCAPES.iter().find(|i| i.0 == c).unwrap().1;
+                        to_push[0].push_back(esc.into());
+                    }
+                    'd' => to_push[0].push_back(DIGIT),
+                    'w' => to_push[0].push_back(
+                        [UPPER, LOWER, DIGIT, '_'.into()].into_iter().collect(),
+                    ),
+                    's' => to_push[0].push_back(
+                        [
+                            ' '.into(),
+                            '\t'.into(),
+                            '\x0B'.into(),
+                            '\r'.into(),
+                            '\n'.into(),
+                            '\x0C'.into(),
+                        ]
+                        .into_iter()
+                        .collect(),
+                    ),
+                    'c' => match pat.next()? {
+                        c @ 'A'..='Z' => {
+                            let ctrl = ('A'..='Z')
+                                .zip('\x01'..='\x1A')
                                 .find(|i| i.0 == c)
-                                .unwrap().1;
-                            to_push[0].push_back(esc.into());
-                        }
-                        'd' => to_push[0].push_back(DIGIT),
-                        'w' => to_push[0].push_back([
-                                UPPER, LOWER, DIGIT, '_'.into(),
-                            ].into_iter().collect()),
-                        's' => to_push[0].push_back([
-                                ' '.into(), '\t'.into(), '\x0B'.into(),
-                                '\r'.into(), '\n'.into(), '\x0C'.into(),
-                            ].into_iter().collect()),
-                        'c' => {
-                            match pat.next()? {
-                                c @ 'A'..='Z' => {
-                                    let ctrl = ('A'..='Z').zip('\x01'..='\x1A')
-                                        .find(|i| i.0 == c)
-                                        .unwrap().1;
-                                    to_push[0].push_back(Match::Char(ctrl));
-                                },
-                                _ => return None,
-                            }
+                                .unwrap()
+                                .1;
+                            to_push[0].push_back(Match::Char(ctrl));
                         }
                         _ => return None,
-                    }
-                }
+                    },
+                    _ => return None,
+                },
                 '-' if range.is_some() => {
                     if let Match::Char(c0) = to_push[0].pop_back()? {
                         let c1 = pat.next()?;
@@ -170,45 +173,62 @@ impl Regex {
                                 match class.as_str() {
                                     "upper" => to_push[0].push_back(UPPER),
                                     "lower" => to_push[0].push_back(LOWER),
-                                    "alpha" =>
-                                        to_push[0].push_back([
-                                            UPPER, LOWER,
-                                        ].into_iter().collect()),
+                                    "alpha" => to_push[0].push_back(
+                                        [UPPER, LOWER].into_iter().collect(),
+                                    ),
                                     "digit" => to_push[0].push_back(DIGIT),
-                                    "xdigit" =>
-                                        to_push[1].push_back([
-                                            DIGIT, ('A', 'F').into(), ('a', 'f').into(),
-                                        ].into_iter().collect()),
-                                    "alnum" =>
-                                        to_push[0].push_back([
-                                            UPPER, LOWER, DIGIT,
-                                        ].into_iter().collect()),
-                                    "ascii" => to_push[0].push_back(('\x00', '\x7F').into()),
-                                    "word" =>
-                                        to_push[0].push_back([
-                                            UPPER, LOWER, DIGIT, '_'.into(),
-                                        ].into_iter().collect()),
+                                    "xdigit" => to_push[1].push_back(
+                                        [
+                                            DIGIT,
+                                            ('A', 'F').into(),
+                                            ('a', 'f').into(),
+                                        ]
+                                        .into_iter()
+                                        .collect(),
+                                    ),
+                                    "alnum" => to_push[0].push_back(
+                                        [UPPER, LOWER, DIGIT]
+                                            .into_iter()
+                                            .collect(),
+                                    ),
+                                    "ascii" => to_push[0]
+                                        .push_back(('\x00', '\x7F').into()),
+                                    "word" => to_push[0].push_back(
+                                        [UPPER, LOWER, DIGIT, '_'.into()]
+                                            .into_iter()
+                                            .collect(),
+                                    ),
                                     "punct" => {
                                         let or = Match::Or(
-                                            "-!\"#$%&'()*+,./:;<=>?@[\\]_`{|}~".chars()
+                                            "-!\"#$%&'()*+,./:;<=>?@[\\]_`{|}~"
+                                                .chars()
                                                 .map(char::into)
-                                                .collect()
+                                                .collect(),
                                         );
                                         to_push[0].push_back(or);
                                     }
-                                    "blank" =>
-                                        to_push[0].push_back([
-                                            ' '.into(), '\t'.into(),
-                                        ].into_iter().collect()),
-                                    "space" =>
-                                        to_push[0].push_back([
-                                            ' '.into(), '\t'.into(), '\x0B'.into(),
-                                            '\r'.into(), '\n'.into(), '\x0C'.into(),
-                                        ].into_iter().collect()),
-                                    "cntrl" =>
-                                        to_push[0].push_back([
-                                            CNTRL.0, CNTRL.1,
-                                        ].into_iter().collect()),
+                                    "blank" => to_push[0].push_back(
+                                        [' '.into(), '\t'.into()]
+                                            .into_iter()
+                                            .collect(),
+                                    ),
+                                    "space" => to_push[0].push_back(
+                                        [
+                                            ' '.into(),
+                                            '\t'.into(),
+                                            '\x0B'.into(),
+                                            '\r'.into(),
+                                            '\n'.into(),
+                                            '\x0C'.into(),
+                                        ]
+                                        .into_iter()
+                                        .collect(),
+                                    ),
+                                    "cntrl" => to_push[0].push_back(
+                                        [CNTRL.0, CNTRL.1]
+                                            .into_iter()
+                                            .collect(),
+                                    ),
                                     "graph" => to_push[0].push_back(GRAPH),
                                     "print" => to_push[0].push_back(PRINT),
                                     _ => return None,
@@ -248,15 +268,12 @@ impl Regex {
                 }
                 ']' => {
                     if let Some('[') = brackets.pop_front() {
-                        let group = to_push
-                            .pop_front()?;
+                        let group = to_push.pop_front()?;
                         if let Some('^') = brackets.front() {
-                            group.iter().try_for_each(
-                                |m| match m {
-                                    Match::Char(_) | Match::Range(_, _) => Some(()),
-                                    _ => None,
-                                }
-                            )?;
+                            group.iter().try_for_each(|m| match m {
+                                Match::Char(_) | Match::Range(_, _) => Some(()),
+                                _ => None,
+                            })?;
                             to_push[0].push_back(Match::NotOr(group));
                         } else {
                             to_push[0].push_back(group.into_iter().collect());
@@ -277,9 +294,7 @@ impl Regex {
                     let m = to_push[0].pop_back()?.ques();
                     to_push[0].push_back(m);
                 }
-                '.' => {
-                    to_push[0].push_back(Match::Any)
-                }
+                '.' => to_push[0].push_back(Match::Any),
                 c => {
                     range = Some(c);
                     to_push[0].push_back(c.into())
@@ -298,7 +313,10 @@ impl Regex {
 
     fn is_match<S: ToString>(&self, src: S) -> bool {
         fn iter_match<'a, M, S>(mut regex: M, src: &mut S) -> bool
-        where M: Iterator<Item=&'a Match> + Clone, S: Iterator<Item=char> + Clone {
+        where
+            M: Iterator<Item = &'a Match> + Clone,
+            S: Iterator<Item = char> + Clone,
+        {
             if let Some(m) = regex.next() {
                 match m {
                     Match::EndLn => src.next().is_none(),
@@ -312,8 +330,7 @@ impl Regex {
                             && iter_match(regex, src)
                     }
                     Match::Any => {
-                        src.next().is_some()
-                            && iter_match(regex, src)
+                        src.next().is_some() && iter_match(regex, src)
                     }
                     Match::Star(m) => {
                         let mut regex = regex.collect::<VecDeque<_>>();
@@ -321,11 +338,15 @@ impl Regex {
                         let mut src_x = src.clone();
                         loop {
                             let mut src_y = src.clone();
-                            if iter_match(regex.clone().into_iter(), &mut src_y) {
+                            if iter_match(regex.clone().into_iter(), &mut src_y)
+                            {
                                 *src = src_y;
                                 return true;
                             }
-                            if iter_match(Some(m.as_ref().clone()).iter(), &mut src_x) {
+                            if iter_match(
+                                Some(m.as_ref().clone()).iter(),
+                                &mut src_x,
+                            ) {
                                 regex.push_front(m.as_ref());
                             } else {
                                 return false;
@@ -337,13 +358,17 @@ impl Regex {
 
                         let mut src_x = src.clone();
                         loop {
-                            if iter_match(Some(m.as_ref().clone()).iter(), &mut src_x) {
+                            if iter_match(
+                                Some(m.as_ref().clone()).iter(),
+                                &mut src_x,
+                            ) {
                                 regex.push_front(m.as_ref());
                             } else {
                                 return false;
                             }
                             let mut src_y = src.clone();
-                            if iter_match(regex.clone().into_iter(), &mut src_y) {
+                            if iter_match(regex.clone().into_iter(), &mut src_y)
+                            {
                                 *src = src_y;
                                 return true;
                             }
@@ -370,7 +395,10 @@ impl Regex {
                         let regex = regex.collect::<VecDeque<_>>();
 
                         for m in g {
-                            if iter_match(Some(m.clone()).iter(), &mut src.clone()) {
+                            if iter_match(
+                                Some(m.clone()).iter(),
+                                &mut src.clone(),
+                            ) {
                                 let mut regex: VecDeque<&Match> = regex.clone();
                                 regex.push_front(m);
                                 let mut src_x = src.clone();
@@ -384,7 +412,10 @@ impl Regex {
                     }
                     Match::NotOr(g) => {
                         for m in g {
-                            if iter_match(Some(m.clone()).iter(), &mut src.clone()) {
+                            if iter_match(
+                                Some(m.clone()).iter(),
+                                &mut src.clone(),
+                            ) {
                                 return false;
                             }
                         }
@@ -402,20 +433,20 @@ impl Regex {
 }
 
 fn main() {
-	let regex = Regex::new(r"[^[:digit:]]*\.[^[:digit:]]+").unwrap();
+    let regex = Regex::new(r"[^[:digit:]]*\.[^[:digit:]]+").unwrap();
     println!("{}", regex);
 
-	let sources = vec![
-		"Denis_Dr0zhzhin.gif",
-		"not_a_file_.org",
+    let sources = vec![
+        "Denis_Dr0zhzhin.gif",
+        "not_a_file_.org",
         "png.image0",
-		".net",
-		".NET",
+        ".net",
+        ".NET",
         ".,/?",
-		"0_.",
-		"0_0",
-	];
-	for source in sources {
-		println!("{:?} -> {}", source, regex.is_match(source));
-	}
+        "0_.",
+        "0_0",
+    ];
+    for source in sources {
+        println!("{:?} -> {}", source, regex.is_match(source));
+    }
 }

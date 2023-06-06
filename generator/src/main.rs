@@ -1,12 +1,14 @@
 #![feature(generators, generator_trait)]
 
-use std::marker::PhantomData;
-use std::mem::take;
-use std::ops::{
-    Deref, DerefMut, Fn, Generator,
-    GeneratorState::{self, *},
+use std::{
+    marker::PhantomData,
+    mem::take,
+    ops::{
+        Deref, DerefMut, Fn, Generator,
+        GeneratorState::{self, *},
+    },
+    pin::Pin,
 };
-use std::pin::Pin;
 
 struct Gen<F, A, T> {
     gen: F,

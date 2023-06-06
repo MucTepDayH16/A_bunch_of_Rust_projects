@@ -1,21 +1,17 @@
 use std::{
-    rc::Rc,
+    cmp::PartialEq,
+    fmt::{Display, Formatter, Result},
     mem::take,
     ops::Deref,
-    fmt::{
-        Display,
-        Formatter,
-        Result
-    },
-    cmp::PartialEq
+    rc::Rc,
 };
 
 type Ref<T> = Option<Rc<T>>;
 
-#[derive(Debug,Default)]
+#[derive(Debug, Default)]
 struct Node<T> {
     item: T,
-    next: Ref<Node<T>>
+    next: Ref<Node<T>>,
 }
 
 impl<T> PartialEq for &Node<T> {
@@ -24,14 +20,14 @@ impl<T> PartialEq for &Node<T> {
     }
 }
 
-#[derive(Debug,Clone)]
+#[derive(Debug, Clone)]
 pub struct NodeIter<'a, T>(Option<&'a Node<T>>);
 
 impl<'a, T> PartialEq for NodeIter<'a, T> {
     fn eq(&self, other: &Self) -> bool {
         match (self.0, other.0) {
             (Some(node1), Some(node2)) => node1 == node2,
-            _ => false
+            _ => false,
         }
     }
 }
@@ -43,7 +39,7 @@ impl<'a, T> Iterator for NodeIter<'a, T> {
         if let Some(node) = self.0 {
             self.0 = match &node.next {
                 Some(rf) => Some(rf.deref()),
-                None => None
+                None => None,
             };
             Some(&node.item)
         } else {
@@ -52,14 +48,14 @@ impl<'a, T> Iterator for NodeIter<'a, T> {
     }
 }
 
-#[derive(Debug,Clone)]
-pub struct NodeIterFinite<'a, T>(Option<&'a Node<T>>,Option<&'a Node<T>>);
+#[derive(Debug, Clone)]
+pub struct NodeIterFinite<'a, T>(Option<&'a Node<T>>, Option<&'a Node<T>>);
 
 impl<'a, T> PartialEq for NodeIterFinite<'a, T> {
     fn eq(&self, other: &Self) -> bool {
         match (self.0, other.0) {
             (Some(node1), Some(node2)) => node1 == node2,
-            _ => false
+            _ => false,
         }
     }
 }
@@ -76,7 +72,7 @@ impl<'a, T> Iterator for NodeIterFinite<'a, T> {
             }
             self.0 = match &node.next {
                 Some(rf) => Some(rf.deref()),
-                None => None
+                None => None,
             };
             Some(&node.item)
         } else {
@@ -90,25 +86,20 @@ impl<'a, T> Iterator for NodeIterFinite<'a, T> {
 /// # Example #
 ///
 /// ```
+/// use std::ops::{Add, Mul};
+///
 /// use multi_list::list::MultiList;
-/// use std::ops::{Add,Mul};
 ///
 /// let mut list_str = MultiList::new();
 ///
-/// list_str
-///     .push(" world!")
-///     .push("Hello,");
+/// list_str.push(" world!").push("Hello,");
 ///
 /// // [ head -> [1]Hello, -> [1] world! ]
 /// println!("{}", list_str);
 ///
 /// let mut list_i32 = MultiList::new();
 ///
-/// list_i32
-///     .push(1)
-///     .push(2)
-///     .push(3)
-///     .push(4);
+/// list_i32.push(1).push(2).push(3).push(4);
 ///
 /// // 10
 /// println!("{}", list_i32.evaluate(i32::add, 0));
@@ -116,9 +107,9 @@ impl<'a, T> Iterator for NodeIterFinite<'a, T> {
 /// // 24
 /// println!("{}", list_i32.evaluate(i32::mul, 1));
 /// ```
-///
+#[derive(Debug)]
 pub struct MultiList<T> {
-    head: Ref<Node<T>>
+    head: Ref<Node<T>>,
 }
 
 impl<T: Display> Display for MultiList<T> {
@@ -144,56 +135,62 @@ impl<T> MultiList<T> {
     pub fn iter(&self) -> NodeIter<T> {
         NodeIter(match &self.head {
             Some(node) => Some(&node),
-            None => None
+            None => None,
         })
     }
 
     #[inline]
-    pub fn iter_to<'a>(&'a self, node: NodeIter<'a, T>) -> NodeIterFinite<'a, T> {
-        NodeIterFinite(match &self.head {
-            Some(node) => Some(&node),
-            None => None
-        }, node.0)
+    pub fn iter_to<'a>(
+        &'a self,
+        node: NodeIter<'a, T>,
+    ) -> NodeIterFinite<'a, T> {
+        NodeIterFinite(
+            match &self.head {
+                Some(node) => Some(&node),
+                None => None,
+            },
+            node.0,
+        )
     }
 
     #[inline]
-    pub fn from_to<'a>(first: NodeIter<'a, T>, last: NodeIter<'a, T>) -> NodeIterFinite<'a, T> {
+    pub fn from_to<'a>(
+        first: NodeIter<'a, T>,
+        last: NodeIter<'a, T>,
+    ) -> NodeIterFinite<'a, T> {
         NodeIterFinite(first.0, last.0)
     }
 
     #[inline]
     pub fn branch(&self) -> Self {
-        Self {head: match &self.head {
-            Some(rf) => Some(rf.clone()),
-            None => None
-        }}
+        Self {
+            head: match &self.head {
+                Some(rf) => Some(rf.clone()),
+                None => None,
+            },
+        }
     }
 
     pub fn push(&mut self, item: T) -> &mut Self {
         self.head = Some(Rc::new(Node {
             item,
-            next: take(&mut self.head)
+            next: take(&mut self.head),
         }));
         self
     }
 
     pub fn pop(&mut self) -> Option<T> {
-        if let Some(rf) = take(&mut self.head) {
-            if let Ok(node) = Rc::try_unwrap(rf) {
-                self.head = node.next;
-                Some(node.item)
-            } else {
-                None
-            }
-        } else {
-            None
-        }
+        let rf = take(&mut self.head)?;
+        let node = Rc::try_unwrap(rf).ok()?;
+
+        self.head = node.next;
+        Some(node.item)
     }
 
     pub fn evaluate<'a, U>(&'a self, fnc: fn(U, &'a T) -> U, mut def: U) -> U {
         let mut rf = &self.head;
         while let Some(node) = rf {
-            def = fnc( def, &node.item );
+            def = fnc(def, &node.item);
             rf = &node.next;
         }
         def
@@ -205,7 +202,7 @@ impl<T> MultiList<T> {
             if Rc::strong_count(node0) > 1 {
                 let mut rf1 = &other.head;
                 while let Some(node1) = rf1 {
-                    if Rc::ptr_eq( node0, node1 ) {
+                    if Rc::ptr_eq(node0, node1) {
                         return NodeIter(Some(node0.deref()));
                     }
                     rf1 = &node1.next;
@@ -222,9 +219,7 @@ impl<T: PartialEq> MultiList<T> {
         let mut rf = &self.head;
         while let Some(node) = rf {
             if node.item.eq(item) {
-                return NodeIter(
-                    Some(node.deref())
-                );
+                return NodeIter(Some(node.deref()));
             } else {
                 rf = &node.next;
             }

@@ -8,17 +8,12 @@ mod list_test {
     fn push_pop() {
         let mut master = MultiList::new();
 
-        master
-            .push(" heh!")
-            .push(" world!");
+        master.push(" heh!").push(" world!");
 
         let mut branch = master.branch();
 
-        master
-            .push("Hello,");
-        branch
-            .push(" cruel")
-            .push("Goodbye,");
+        master.push("Hello,");
+        branch.push(" cruel").push("Goodbye,");
 
         assert_eq!(branch.pop(), Some("Goodbye,"));
         assert_eq!(branch.pop(), Some(" cruel"));
@@ -32,30 +27,21 @@ mod list_test {
     }
 
     use std::{
-        ops::{Add,Mul},
-        cmp::max
+        cmp::max,
+        ops::{Add, Mul},
     };
 
     #[test]
     fn evaluate_str() {
         let mut master = MultiList::new();
         let mut branch;
-        master
-            .push("ld!")
-            .push("wor");
+        master.push("ld!").push("wor");
         branch = master.branch();
-        branch
-            .push(" cruel")
-            .push("Goodbye,");
-        master
-            .push("o, ")
-            .push("Hell");
+        branch.push(" cruel").push("Goodbye,");
+        master.push("o, ").push("Hell");
 
         let std_add = |eval: String, item: &&str| eval + *item;
-        assert_eq!("Hello, world!", master.evaluate(
-            std_add,
-            "".to_string()
-        ));
+        assert_eq!("Hello, world!", master.evaluate(std_add, "".to_string()));
     }
 
     #[test]
@@ -66,14 +52,8 @@ mod list_test {
             master.push(*i);
         }
 
-        assert_eq!(
-            array.iter().sum::<i32>(),
-            master.evaluate(i32::add, 0)
-        );
-        assert_eq!(
-            array.iter().product::<i32>(),
-            master.evaluate(i32::mul, 1)
-        );
+        assert_eq!(array.iter().sum::<i32>(), master.evaluate(i32::add, 0));
+        assert_eq!(array.iter().product::<i32>(), master.evaluate(i32::mul, 1));
         assert_eq!(
             array.iter().max(),
             Some(master.evaluate(max::<&i32>, &i32::MIN))
@@ -83,11 +63,7 @@ mod list_test {
     #[test]
     fn sub_list() {
         let mut master = MultiList::new();
-        master
-            .push("A")
-            .push("B")
-            .push("C")
-            .push("D");
+        master.push("A").push("B").push("C").push("D");
 
         let mut iter = MultiList::from_to(master.find(&"C"), master.find(&"A"));
 
@@ -100,17 +76,12 @@ mod list_test {
     #[test]
     fn common_node() {
         let mut master = MultiList::new();
-        master
-            .push("A")
-            .push("B");
+        master.push("A").push("B");
 
         let mut branch = master.branch();
-        branch
-            .push("C");
+        branch.push("C");
 
-        master
-            .push("D")
-            .push("E");
+        master.push("D").push("E");
 
         let node_b = master.find(&"B");
         assert_eq!(node_b, branch.find(&"B"));

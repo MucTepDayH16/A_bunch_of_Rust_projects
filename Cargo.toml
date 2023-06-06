@@ -15,5 +15,7 @@ members = [
     "codec",
     "sem_ver",
     "asm",
+    "nvptx",
     "db",
+    "executor",
 ]

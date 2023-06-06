@@ -1,18 +1,20 @@
-#![feature(box_syntax, unboxed_closures, fn_traits)]
+#![feature(unboxed_closures, fn_traits)]
 #![allow(invalid_type_param_default)]
 
-use std::ops::{Mul, FnOnce, FnMut, Fn};
-use std::fmt;
+use std::{
+    fmt,
+    ops::{Fn, FnMut, FnOnce, Mul},
+};
 
 struct Lambda<Args, R> {
-    func: Box<dyn FnOnce<Args, Output=R>>,
+    func: Box<dyn FnOnce<Args, Output = R>>,
 }
 
 macro_rules! impl_lambda {
     (* $r:ident <- <- ) => {
         impl<$r> FnOnce<()> for Lambda<(), $r> {
             type Output = $r;
-            
+
             extern "rust-call" fn call_once(self, _: ()) -> $r {
                 self.func.call_once(())
             }
@@ -22,20 +24,20 @@ macro_rules! impl_lambda {
         impl<$r: 'static, $($as: 'static ,)* $($bs: 'static ,)*> FnOnce<( $($as ,)* )>
         for Lambda<( $($as,)* $($bs,)*),$r> {
             type Output = Lambda<( $($bs,)* ), $r>;
-            
+
             extern "rust-call" fn call_once(self, ( $($a ,)* ): ( $($as ,)* )) -> Self::Output {
-                Self::Output{ func: box move |$($b: $bs,)*| -> $r { self.func.call_once(( $($a,)* $($b,)* )) } }
+                Self::Output{ func: Box::new(move |$($b: $bs,)*| -> $r { self.func.call_once(( $($a,)* $($b,)* )) } )}
             }
         }
     };
     ($($as:ident: $As:ident,)* ; ) => {
         impl_lambda!{* ReturnType <- $($as: $As,)* <-}
-		
+
 		impl<X: 'static, $($As: 'static,)* R: 'static> Mul<Lambda<($($As,)*), X>> for Lambda<(X,), R> {
 			type Output = Lambda<($($As,)*), R>;
-			
+
 			fn mul(self, other: Lambda<($($As,)*), X>) -> Self::Output {
-				Self::Output{ func: box move |$($as: $As,)*| self.func.call_once((other.func.call_once(($($as,)*)),)) }
+				Self::Output{ func: Box::new(move |$($as: $As,)*| self.func.call_once((other.func.call_once(($($as,)*)),)) )}
 			}
 		}
 
@@ -55,43 +57,54 @@ macro_rules! impl_lambda {
     };
 }
 
-impl_lambda!{ }
-impl_lambda!{ a: A }
-impl_lambda!{ a: A, b: B }
-impl_lambda!{ a: A, b: B, c: C }
-impl_lambda!{ a: A, b: B, c: C, d: D }
-impl_lambda!{ a: A, b: B, c: C, d: D, e: E }
-impl_lambda!{ a: A, b: B, c: C, d: D, e: E, f: F }
-impl_lambda!{ a: A, b: B, c: C, d: D, e: E, f: F, g: G }
-impl_lambda!{ a: A, b: B, c: C, d: D, e: E, f: F, g: G, h: H }
+impl_lambda! {}
+impl_lambda! { a: A }
+impl_lambda! { a: A, b: B }
+impl_lambda! { a: A, b: B, c: C }
+impl_lambda! { a: A, b: B, c: C, d: D }
+impl_lambda! { a: A, b: B, c: C, d: D, e: E }
+impl_lambda! { a: A, b: B, c: C, d: D, e: E, f: F }
+impl_lambda! { a: A, b: B, c: C, d: D, e: E, f: F, g: G }
+impl_lambda! { a: A, b: B, c: C, d: D, e: E, f: F, g: G, h: H }
 
 fn add<A: std::ops::Add>() -> Lambda<(A, A), A::Output> {
-	Lambda{ func: box move |a, b| a + b }
+    Lambda {
+        func: Box::new(move |a, b| a + b),
+    }
 }
 
 fn mul<A: std::ops::Mul>() -> Lambda<(A, A), A::Output> {
-	Lambda{ func: box move |a, b| a * b }
+    Lambda {
+        func: Box::new(move |a, b| a * b),
+    }
 }
 
 fn sub<A: std::ops::Sub>() -> Lambda<(A, A), A::Output> {
-	Lambda{ func: box move |a, b| a - b }
+    Lambda {
+        func: Box::new(move |a, b| a - b),
+    }
 }
 
 fn div<A: std::ops::Div>() -> Lambda<(A, A), A::Output> {
-	Lambda{ func: box move |a, b| a / b }
+    Lambda {
+        func: Box::new(move |a, b| a / b),
+    }
 }
 
 fn map<F, I, T>() -> Lambda<(F, I), std::iter::Map<I::IntoIter, F>>
-where I: IntoIterator, F: Fn(I::Item) -> T {
-	Lambda{ func: box move |f, i| i.into_iter().map(f) }
+where
+    I: IntoIterator,
+    F: Fn(I::Item) -> T,
+{
+    Lambda {
+        func: Box::new(move |f, i| i.into_iter().map(f)),
+    }
 }
 
 fn main() {
-	println!("{:?}",
-		map()
-		(|x| x * x)
-		(vec![1, 2, 3, 4, 5])
-		().collect::<Vec<i32>>()
-	);
-    println!("{}", ( add() (3) * add() (4) ) (5) ());
+    println!(
+        "{:?}",
+        map()(|x| x * x)(vec![1, 2, 3, 4, 5])().collect::<Vec<i32>>()
+    );
+    println!("{}", (add()(3) * add()(4))(5)());
 }
