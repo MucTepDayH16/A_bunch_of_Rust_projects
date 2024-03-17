@@ -1,9 +1,8 @@
 use std::{
-    alloc::Layout,
     future::Future,
     pin::pin,
     sync::{
-        atomic::{AtomicBool, AtomicUsize, Ordering},
+        atomic::{AtomicBool, Ordering},
         Arc,
     },
     task::*,
@@ -24,7 +23,7 @@ impl Wake for MyWaker {
     }
 }
 
-fn block_on<Fut: Future>(fut: Fut) -> Fut::Output {
+pub fn block_on<Fut: Future>(fut: Fut) -> Fut::Output {
     static ENTER: AtomicBool = AtomicBool::new(false);
 
     ENTER

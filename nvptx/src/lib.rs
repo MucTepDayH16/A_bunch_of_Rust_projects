@@ -1,14 +1,27 @@
 #![no_std]
-#![feature(abi_ptx, stdsimd, alloc_error_handler, panic_info_message)]
+#![feature(abi_ptx, stdarch_nvptx, alloc_error_handler, panic_info_message)]
 
 extern crate alloc;
 
-use alloc::string::String;
+use alloc::{
+    alloc::{GlobalAlloc, Layout},
+    string::String,
+};
 use core::{arch::nvptx::*, fmt::Write, marker::PhantomData, slice};
-mod ptx_alloc;
+
+pub struct PTXAllocator;
+
+unsafe impl GlobalAlloc for PTXAllocator {
+    unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
+        malloc(layout.size()) as *mut u8
+    }
+    unsafe fn dealloc(&self, ptr: *mut u8, _layout: Layout) {
+        free(ptr as *mut _);
+    }
+}
 
 #[global_allocator]
-static GLOBAL_ALLOCATOR: ptx_alloc::PTXAllocator = ptx_alloc::PTXAllocator;
+static GLOBAL_ALLOCATOR: PTXAllocator = PTXAllocator;
 
 #[panic_handler]
 fn panic(info: &::core::panic::PanicInfo) -> ! {

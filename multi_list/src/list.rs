@@ -1,5 +1,4 @@
 use std::{
-    cmp::PartialEq,
     fmt::{Display, Formatter, Result},
     mem::take,
     ops::Deref,

@@ -3,10 +3,10 @@
 
 use std::{
     fmt,
-    ops::{Fn, FnMut, FnOnce, Mul},
+    ops::Mul,
 };
 
-struct Lambda<Args, R> {
+pub struct Lambda<Args, R> {
     func: Box<dyn FnOnce<Args, Output = R>>,
 }
 
@@ -73,25 +73,25 @@ fn add<A: std::ops::Add>() -> Lambda<(A, A), A::Output> {
     }
 }
 
-fn mul<A: std::ops::Mul>() -> Lambda<(A, A), A::Output> {
+pub fn mul<A: std::ops::Mul>() -> Lambda<(A, A), A::Output> {
     Lambda {
         func: Box::new(move |a, b| a * b),
     }
 }
 
-fn sub<A: std::ops::Sub>() -> Lambda<(A, A), A::Output> {
+pub fn sub<A: std::ops::Sub>() -> Lambda<(A, A), A::Output> {
     Lambda {
         func: Box::new(move |a, b| a - b),
     }
 }
 
-fn div<A: std::ops::Div>() -> Lambda<(A, A), A::Output> {
+pub fn div<A: std::ops::Div>() -> Lambda<(A, A), A::Output> {
     Lambda {
         func: Box::new(move |a, b| a / b),
     }
 }
 
-fn map<F, I, T>() -> Lambda<(F, I), std::iter::Map<I::IntoIter, F>>
+pub fn map<F, I, T>() -> Lambda<(F, I), std::iter::Map<I::IntoIter, F>>
 where
     I: IntoIterator,
     F: Fn(I::Item) -> T,

@@ -1,11 +1,10 @@
-#![feature(generators, generator_trait)]
+#![feature(coroutines, coroutine_trait)]
 
 use std::{
     marker::PhantomData,
     mem::take,
     ops::{
-        Deref, DerefMut, Fn, Generator,
-        GeneratorState::{self, *},
+        Coroutine, CoroutineState
     },
     pin::Pin,
 };
@@ -34,6 +33,7 @@ where
     F: Fn(A) -> Option<(A, T)>,
     A: Default,
 {
+    #[allow(dead_code)]
     fn new_default(gen: F) -> Self {
         Self {
             gen,
@@ -63,7 +63,7 @@ struct GenV2<G, R> {
 
 impl<G, R> GenV2<G, R>
 where
-    G: Generator<R>,
+    G: Coroutine<R>,
 {
     fn new(gen: G) -> Self {
         Self {
@@ -75,14 +75,14 @@ where
 
 impl<G> Iterator for GenV2<G, ()>
 where
-    G: Generator<Return = ()> + Unpin,
+    G: Coroutine<Return = ()> + Unpin,
 {
-    type Item = <G as Generator>::Yield;
+    type Item = <G as Coroutine>::Yield;
 
     fn next(&mut self) -> Option<Self::Item> {
         match Pin::new(&mut self.gen).resume(()) {
-            GeneratorState::Yielded(y) => Some(y),
-            GeneratorState::Complete(()) => None,
+            CoroutineState::Yielded(y) => Some(y),
+            CoroutineState::Complete(()) => None,
         }
     }
 }

@@ -28,7 +28,7 @@ fn main() {
         if let Err(e) = stdin.read_line(&mut buf) {
             eprintln!("{e:?}");
             continue;
-        };
+        }
 
         if let Err(e) = strm.write(buf.as_bytes()) {
             eprintln!("{e:?}");
